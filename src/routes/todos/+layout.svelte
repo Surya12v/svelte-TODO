@@ -1,11 +1,10 @@
 <script lang="ts">
 import TodoModal from '$lib/components/TodoModal.svelte';
-import TodoListItem from '$lib/components/TodoListItem.svelte';
 import { goto } from '$app/navigation';
 import type { LayoutData } from './$types';
 
 export let data: LayoutData;
-let { todos } = data;
+let { todos, selectedId } = data;
 let showModal = false;
 
 function openModal() {
@@ -14,33 +13,19 @@ function openModal() {
 function closeModal() {
   showModal = false;
 }
-function selectTodo(todo: { id: string | number }) {
+function selectTodo(todo: { id: string }) {
   goto(`/todos/${todo.id}`);
 }
 </script>
 
-<div class="main-layout">
-  <aside class="sidebar">
-    <div class="sidebar-header">
-      <h1>Todo List from outside</h1>
-      <button class="create-btn" on:click={openModal}>+ Create Todo</button>
-    </div>
-    <ul class="todo-list">
-      {#each todos as todo (todo.id)}
-        <TodoListItem {todo} on:select={event => selectTodo(event.detail)} />
-      {/each}
-    </ul>
-    {#if showModal}
-      <TodoModal on:close={closeModal} />
-    {/if}
-  </aside>
+<div class="main-content">
   <main class="content-area">
     <slot />
   </main>
 </div>
 
 <style>
-.main-layout {
+.main-content {
   display: flex;
   height: 100vh;
 }

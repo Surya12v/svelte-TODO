@@ -1,38 +1,28 @@
-# sv
+# SvelteKit Todo App Execution Workflow
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+## 1. Form Submission (Create/Update)
+- User fills out the todo form (e.g., in the modal) and submits it.
+- The form uses `method="post"` and an `action` (e.g., `?/create` or `?/update-status`).
+- SvelteKit sends the form data to the corresponding action in `+page.server.ts`.
 
-## Creating a project
+## 2. Server Action & API Call
+- The server action (e.g., `create`, `update`, `update-status`) receives the form data.
+- It processes the data, handles file uploads if needed, and calls the appropriate database query (e.g., `createTodo`, `updateTodo`).
+- The database (MySQL) is updated accordingly.
 
-If you're seeing this, you've probably already done this step. Congrats!
+## 3. CRUD Operations
+- **Create:** Adds a new todo to the `todolist` table.
+- **Read:** Todos are fetched from the database in `+layout.server.ts` using `getTodos()` and passed to the page as data.
+- **Update:** Status or other fields are updated via form actions and `updateTodo`/`update-status` queries.
+- **Delete:** A delete action removes a todo from the database.
 
-```sh
-# create a new project in the current directory
-npx sv create
+## 4. Re-fetching & Displaying the List
+- After any create, update, or delete action, SvelteKit reloads the page or data.
+- The `load` function in `+layout.server.ts` fetches the latest todos from the database.
+- The UI receives the updated list via the `data` prop and displays all todos.
 
-# create a new project in my-app
-npx sv create my-app
-```
+## 5. Display
+- The left panel shows the list of todos (with status, strike-through if closed).
+- The right panel shows details and comments for the selected todo.
+- Any changes (add, update, delete) are reflected immediately after the action completes.
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
