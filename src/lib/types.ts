@@ -4,7 +4,7 @@ export type Todo = {
     name: string;
     date: Date;
     dueDate?: Date;
-    image?: string;
+    images?: string[];
     description?: string;
     completed: boolean;
     createdAt: Date;
@@ -17,4 +17,5 @@ export type Comment = {
     todoId: string;
     createdAt: Date;
     updatedAt?: Date;
+
 };

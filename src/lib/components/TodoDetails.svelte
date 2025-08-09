@@ -1,7 +1,14 @@
 <!-- Detailed view of selected todo (right side) -->
 <script lang="ts">
-  import type { Todo } from '../types';
+  import type { Todo, Comment } from '../types';
+  import { enhance} from '$app/forms';
+  import { createEventDispatcher } from 'svelte';
+  import type { ActionResult } from '@sveltejs/kit';
   export let todo: Todo;
+  export let comments: Comment[] = [];
+  let newComment = '';
+
+  const dispatch = createEventDispatcher();
 
   function formatDate(date: Date | string | undefined): string {
     if (!date) return 'Not set';
@@ -20,24 +27,41 @@
     today.setHours(0, 0, 0, 0);
     return due < today;
   }
+
+  function handleFormSuccess() {
+    newComment = '';
+    dispatch('success');
+  }
 </script>
 
 <div class="todo-details">
     {#if todo}
         <div class="details-header">
             <h2 class="todo-title">{todo.title}</h2>
-            <div class="status-badge" class:completed={todo.completed} class:pending={!todo.completed}>
-                <span class="status-icon">
-                    {#if todo.completed}
-                        ✓
-                    {:else}
-                        ⏳
-                    {/if}
-                </span>
-                <span class="status-text">
-                    {todo.completed ? 'Completed' : 'Pending'}
-                </span>
-            </div>
+            
+            <!-- Status Toggle Form -->
+            <form 
+                method="POST" 
+                action="?/updateStatus"
+                use:enhance={(form) => {
+                    return async ({ result }) => {
+                        if (result.type === 'success') {
+                            handleFormSuccess();
+                        }
+                    };
+                }}
+                class="status-toggle"
+            >
+                <input type="hidden" name="completed" value={!todo.completed} />
+                <button type="submit" class="status-badge" class:completed={todo.completed} class:pending={!todo.completed}>
+                    <span class="status-icon">
+                        {#if todo.completed}✓{:else}⏳{/if}
+                    </span>
+                    <span class="status-text">
+                        {todo.completed ? 'Mark as Incomplete' : 'Mark as Complete'}
+                    </span>
+                </button>
+            </form>
         </div>
 
         {#if todo.description}
@@ -64,14 +88,56 @@
             {/if}
         </div>
 
-        {#if todo.image}
-            <div class="image-section">
-                <h3>Attached Image</h3>
-                <div class="image-container">
-                    <img src={todo.image} alt="Todo attachment" class="todo-image" />
-                </div>
+        {#if todo.images && todo.images.length}
+        <div class="image-section">
+            <h3>Attached Images</h3>
+            <div class="image-container">
+            {#each todo.images as img}
+                <img src={img} alt="Todo attachment" class="todo-image" />
+            {/each}
             </div>
+        </div>
         {/if}
+
+        <!-- Comments Section -->
+        <div class="comments-section">
+            <h3>Comments</h3>
+            {#if comments && comments.length > 0}
+                <ul class="comments-list">
+                    {#each comments as comment}
+                        <li class="comment-item">
+                            <p class="comment-text">{comment.text}</p>
+                            <span class="comment-date">{formatDate(comment.createdAt)}</span>
+                        </li>
+                    {/each}
+                </ul>
+            {:else}
+                <p class="no-comments">No comments yet</p>
+            {/if}
+
+            <form 
+                method="POST" 
+                action="?/addComment"
+                class="comment-form"
+                use:enhance={(form) => {
+                    return async ({ result }) => {
+                        if (result.type === 'success') {
+                            handleFormSuccess();
+                        }
+                    };
+                }}
+            >
+                <input 
+                    type="text" 
+                    name="comment"
+                    bind:value={newComment}
+                    placeholder="Add a comment..."
+                    required
+                    class="comment-input"
+                />
+                <button type="submit" class="comment-submit">Add Comment</button>
+            </form>
+        </div>
     {:else}
         <div class="empty-state">
             <div class="empty-icon">📋</div>
@@ -267,68 +333,77 @@
         line-height: 1.5;
     }
 
-    /* Mobile responsiveness */
-    @media (max-width: 768px) {
-        .todo-details {
-            padding: 16px;
-            border-left: none;
-            border-top: 1px solid #e5e7eb;
-        }
-
-        .details-header {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 12px;
-        }
-
-        .todo-title {
-            font-size: 1.5rem;
-        }
-
-        .status-badge {
-            align-self: flex-start;
-        }
-
-        .date-item {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 4px;
-        }
-
-        .date-value {
-            font-size: 0.875rem;
-        }
-
-        .todo-image {
-            max-width: 100%;
-        }
+    /* Comments Section Styles */
+    .comments-section {
+        margin-top: 2rem;
+        padding: 1rem;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
     }
 
-    /* Dark mode support (optional) */
-    @media (prefers-color-scheme: dark) {
-        .todo-details {
-            background: #111827;
-            border-left-color: #374151;
-        }
+    .comments-list {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 1rem 0;
+    }
 
-        .todo-title {
-            color: #f9fafb;
-        }
+    .comment-item {
+        padding: 0.75rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
 
-        .description-text,
-        .date-item {
-            background: #1f2937;
-            border-color: #374151;
-            color: #e5e7eb;
-        }
+    .comment-text {
+        margin: 0 0 0.5rem 0;
+        color: #374151;
+    }
 
-        .date-value {
-            color: #f9fafb;
-        }
+    .comment-date {
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
 
-        .image-container {
-            background: #1f2937;
-            border-color: #374151;
-        }
+    .no-comments {
+        text-align: center;
+        color: #6b7280;
+        padding: 1rem;
+    }
+
+    .comment-form {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+
+    .comment-input {
+        flex: 1;
+        padding: 0.5rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 4px;
+        font-size: 0.875rem;
+    }
+
+    .comment-submit {
+        padding: 0.5rem 1rem;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    .comment-submit:hover {
+        background: #2563eb;
+    }
+
+    .status-toggle {
+        margin: 0;
+    }
+
+    .status-badge {
+        cursor: pointer;
+        border: none;
+        width: 100%;
     }
 </style>

@@ -1,7 +1,14 @@
 <script lang="ts">
-  import type { Todo } from '../types';
   import { createEventDispatcher } from 'svelte';
   const dispatch = createEventDispatcher();
+   let previews: string[] = [];
+
+  function handleFilesChange(event: Event) {
+    const target = event.target as HTMLInputElement;
+    if (target.files) {
+      previews = Array.from(target.files).map(file => URL.createObjectURL(file));
+    }
+  }
 </script>
 
 <div
@@ -10,7 +17,12 @@
   tabindex="0"
   aria-label="Close modal"
   on:click={() => dispatch('close')}
-  on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') dispatch('close'); }}
+  on:keydown={(e) => { 
+    // Only close on Escape key, not Enter or Space
+    if (e.key === 'Escape') {
+      dispatch('close');
+    }
+  }}
 >
   <div
     class="modal"
@@ -18,14 +30,19 @@
     aria-modal="true"
     on:click|stopPropagation
     tabindex="0"
-    on:keydown={(e) => { /* Prevent accidental close on modal keydown */ }}
+    on:keydown|stopPropagation={(e) => { 
+      // Prevent any keydown events from bubbling to backdrop
+      // Only handle Escape key to close modal
+      if (e.key === 'Escape') {
+        dispatch('close');
+      }
+    }}
   >
     <div class="modal-header">
       <h2>Create a New Todo</h2>
       <button class="close-btn" on:click={() => dispatch('close')}>×</button>
     </div>
-    
-    <form action="?/create" method="post" enctype="multipart/form-data" class="modal-form">
+   <form action="?/createTodo" method="post" enctype="multipart/form-data" class="modal-form">
       <div class="form-group">
         <label for="todo-title">Title</label>
         <input type="text" id="todo-title" name="title" required placeholder="Enter todo title" />
@@ -54,12 +71,28 @@
       </div>
 
       <div class="form-group">
-        <label for="todo-image" class="file-label">
+        <label for="todo-images" class="file-label">
           <span class="file-icon">📷</span>
-          <span>Choose Image (Optional)</span>
+          <span>Choose Images (Optional)</span>
         </label>
-        <input type="file" id="todo-image" name="image" accept="image/*" class="file-input" />
+        <input
+          type="file"
+          id="todo-images"
+          name="images"
+          accept="image/*"
+          class="file-input"
+          multiple
+          on:change={handleFilesChange}
+        />
       </div>
+
+      {#if previews.length}
+        <div class="image-preview-grid">
+          {#each previews as src}
+            <img src={src} alt="Preview" class="preview-img" />
+          {/each}
+        </div>
+      {/if}
 
       <div class="form-actions">
         <button type="button" class="btn btn-secondary" on:click={() => dispatch('close')}>Cancel</button>
@@ -275,31 +308,15 @@
       transform: translateY(0) scale(1);
     }
   }
-
-  /* Mobile responsiveness */
-  @media (max-width: 640px) {
-    .modal {
-      width: 95%;
-      margin: 20px;
-    }
-
-    .modal-header,
-    .modal-form {
-      padding-left: 16px;
-      padding-right: 16px;
-    }
-
-    .form-row {
-      flex-direction: column;
-      gap: 0;
-    }
-
-    .form-actions {
-      flex-direction: column;
-    }
-
-    .btn {
-      width: 100%;
-    }
+  .image-preview-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .preview-img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 6px;
   }
 </style>

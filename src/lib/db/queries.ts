@@ -5,15 +5,18 @@ import { v4 as uuidv4 } from 'uuid';
 // SQL query functions (createTodo, getTodos, addComment, etc.)
 
 export async function createTodo(todo: Todo) {
-    const sql = `INSERT INTO todolist (id, title, name, date, dueDate, image, description, completed, createdAt, updatedAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const sql = `
+      INSERT INTO todolist (
+        id, title, name, date, dueDate, images, description, completed, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
     const values = [
         todo.id,
         todo.title,
         todo.name,
         todo.date,
         todo.dueDate ?? null,
-        todo.image ?? null,
+        todo.images ? JSON.stringify(todo.images) : null, // ✅ store as JSON
         todo.description ?? null,
         todo.completed,
         todo.createdAt,
@@ -22,25 +25,33 @@ export async function createTodo(todo: Todo) {
     await db.query(sql, values);
 }
 
+
 export async function getTodos(): Promise<Todo[]> {
     const [rows] = await db.query('SELECT * FROM todolist');
-    return rows as Todo[];
+    return (rows as Todo[]).map(todo => ({
+        ...todo,
+        images: todo.images ? JSON.parse(todo.images as unknown as string) : []
+    }));
 }
 
 export async function getTodoById(id: string): Promise<Todo | null> {
     const [rows] = await db.query('SELECT * FROM todolist WHERE id = ?', [id]);
-    const todos = rows as Todo[];
+    const todos = (rows as Todo[]).map(todo => ({
+        ...todo,
+        images: todo.images ? JSON.parse(todo.images as unknown as string) : []
+    }));
     return todos[0] ?? null;
 }
 
+
 export async function updateTodo(todo: Todo) {
-    const sql = `UPDATE todolist SET title=?, name=?, date=?, dueDate=?, image=?, description=?, completed=?, updatedAt=? WHERE id=?`;
+    const sql = `UPDATE todolist SET title=?, name=?, date=?, dueDate=?, images=?, description=?, completed=?, updatedAt=? WHERE id=?`;
     const values = [
         todo.title,
         todo.name,
         todo.date,
         todo.dueDate ?? null,
-        todo.image ?? null,
+        todo.images ? JSON.stringify(todo.images) : null,
         todo.description ?? null,
         todo.completed,
         todo.updatedAt ?? new Date(),
@@ -63,6 +74,7 @@ export async function addComment(comment: { id: string, todoId: string, text: st
 
 export async function getCommentsByTodoId(todoId: string): Promise<Comment[]> {
     const [rows] = await db.query('SELECT * FROM comments WHERE todoId = ?', [todoId]);
+
     return rows as Comment[];
 }
 
