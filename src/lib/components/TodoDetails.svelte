@@ -9,6 +9,11 @@
 
   const dispatch = createEventDispatcher();
 
+  // Image gallery state
+  let selectedImage: string | null = null;
+  let currentIndex: number = 0;
+  let lightboxElement: HTMLDivElement;
+
   // Enhanced form success handler
   async function handleFormSuccess({ result }: { result: any }) {
     if (result.type === 'success') {
@@ -28,7 +33,7 @@
     }
   }
 
-  // Date formatting utilities (unchanged)
+  // Date formatting utilities
   function formatDate(date: Date | string | undefined): string {
     if (!date) return 'Not set';
     const d = new Date(date);
@@ -45,6 +50,39 @@
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return due < today;
+  }
+
+  // Image gallery functions
+  function openLightbox(img: string, index: number): void {
+    selectedImage = img;
+    currentIndex = index;
+    // Focus the lightbox for keyboard navigation
+    setTimeout(() => lightboxElement?.focus(), 10);
+  }
+
+  function closeLightbox(): void {
+    selectedImage = null;
+    currentIndex = 0;
+  }
+
+  function nextImage(): void {
+    if (todo.images && currentIndex < todo.images.length - 1) {
+      currentIndex += 1;
+      selectedImage = todo.images[currentIndex];
+    }
+  }
+
+  function prevImage(): void {
+    if (todo.images && currentIndex > 0) {
+      currentIndex -= 1;
+      selectedImage = todo.images[currentIndex];
+    }
+  }
+
+  function handleKeydown(e: KeyboardEvent): void {
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowRight') nextImage();
+    if (e.key === 'ArrowLeft') prevImage();
   }
 </script>
 
@@ -103,55 +141,85 @@
         </div>
 
         {#if todo.images && todo.images.length}
-        <div class="image-section">
-            <h3>Attached Images</h3>
-            <div class="image-container">
-            {#each todo.images as img}
-                <img src={img} alt="Todo attachment" class="todo-image" />
-            {/each}
+            <div class="image-section">
+                <h3>Attached Images</h3>
+                <div class="image-grid">
+                    {#each todo.images as img, index}
+                        <div class="image-wrapper">
+                            <img 
+                                src={img} 
+                                alt="Todo attachment {index + 1}" 
+                                class="todo-image" 
+                                loading="lazy"
+                            />
+                            <div class="image-overlay">
+                                <button 
+                                    class="view-full" 
+                                    type="button" 
+                                    on:click={() => openLightbox(img, index)}
+                                    aria-label="View full image"
+                                >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="m21 21-6-6m6 6v-4.8m0 4.8h-4.8"/>
+                                        <path d="M3 16.2V21m0 0h4.8M3 21l6-6"/>
+                                        <path d="M21 7.8V3m0 0h-4.8M21 3l-6 6"/>
+                                        <path d="M3 7.8V3m0 0h4.8M3 3l6 6"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    {/each}
+                </div>
+                {#if todo.images.length > 1}
+                    <p class="image-count">{todo.images.length} images attached</p>
+                {/if}
             </div>
-        </div>
         {/if}
 
         <!-- Comments Section -->
-        <div class="comments-section">
-            <h3>Comments</h3>
-            {#if comments && comments.length > 0}
-                <ul class="comments-list">
-                    {#each comments as comment}
-                        <li class="comment-item">
-                            <p class="comment-text">{comment.text}</p>
-                            <span class="comment-date">{formatDate(comment.createdAt)}</span>
-                        </li>
-                    {/each}
-                </ul>
-            {:else}
-                <p class="no-comments">No comments yet</p>
-            {/if}
+         <div class="comments-section">
+    <h3 class="comments-header">Comments</h3>
 
-            <form 
-                method="POST" 
-                action="?/addComment"
-                class="comment-form"
-                use:enhance={(form) => {
-                    return async ({ result }) => {
-                        if (result.type === 'success') {
-                            handleFormSuccess({ result });
-                        }
-                    };
-                }}
-            >
-                <input 
-                    type="text" 
-                    name="comment"
-                    bind:value={newComment}
-                    placeholder="Add a comment..."
-                    required
-                    class="comment-input"
-                />
-                <button type="submit" class="comment-submit">Add Comment</button>
-            </form>
-        </div>
+    <div class="comments-list-container">
+        {#if comments && comments.length > 0}
+            <ul class="comments-list">
+                {#each comments as comment}
+                    <li class="comment-item">
+                        <p class="comment-text">{comment.text}</p>
+                        <span class="comment-date">{formatDate(comment.createdAt)}</span>
+                    </li>
+                {/each}
+            </ul>
+        {:else}
+            <p class="no-comments">No comments yet</p>
+        {/if}
+    </div>
+
+    <form 
+        method="POST" 
+        action="?/addComment"
+        class="comment-form"
+        use:enhance={(form) => {
+            return async ({ result }) => {
+                if (result.type === 'success') {
+                    handleFormSuccess({ result });
+                }
+            };
+        }}
+    >
+        <input 
+            type="text" 
+            name="comment"
+            bind:value={newComment}
+            placeholder="Add a comment..."
+            required
+            class="comment-input"
+        />
+        <button type="submit" class="comment-submit">Add Comment</button>
+    </form>
+</div>
+
+
     {:else}
         <div class="empty-state">
             <div class="empty-icon">📋</div>
@@ -160,6 +228,48 @@
         </div>
     {/if}
 </div>
+
+<!-- Lightbox Modal -->
+{#if selectedImage}
+    <div 
+        class="lightbox-backdrop"
+        bind:this={lightboxElement}
+        role="dialog"
+        aria-modal="true"
+        tabindex="0"
+        on:click={closeLightbox}
+        on:keydown={handleKeydown}
+    >
+        <section 
+            class="lightbox-container" 
+            role="document"
+        >
+            <!-- Close Button -->
+            <button 
+                class="lightbox-close"
+                on:click|stopPropagation={closeLightbox}
+                aria-label="Close image viewer"
+            >
+                ✕
+            </button>
+            <!-- Main Image -->
+            <img 
+                src={selectedImage} 
+                alt="Todo attachment {currentIndex + 1}"
+                class="lightbox-image"
+            />
+
+            <!-- Image Counter -->
+            {#if todo.images && todo.images.length > 1}
+                <div class="lightbox-counter">
+                    {currentIndex + 1} of {todo.images.length}
+                </div>
+            {/if}
+</section>
+        </div>
+{/if}
+
+
 
 <style>
     .todo-details {
@@ -198,6 +308,8 @@
         font-weight: 500;
         white-space: nowrap;
         transition: all 0.2s ease;
+        cursor: pointer;
+        border: none;
     }
 
     .status-badge.completed {
@@ -214,6 +326,10 @@
 
     .status-icon {
         font-size: 1rem;
+    }
+
+    .status-toggle {
+        margin: 0;
     }
 
     .description-section {
@@ -286,35 +402,109 @@
     }
 
     .image-section {
-        margin-bottom: 24px;
+        overflow-y: auto; /* vertical scroll only */
+        max-height: 150px; /* adjust as needed */
+        margin: 1.5rem 0;
+        padding: 1rem;
+        background: #f8fafc;
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
     }
 
     .image-section h3 {
-        margin: 0 0 12px 0;
+        margin: 0 0 1rem 0;
         font-size: 1.125rem;
         font-weight: 600;
         color: #374151;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
 
-    .image-container {
-        background: white;
-        border-radius: 12px;
-        border: 1px solid #e5e7eb;
-        padding: 12px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    .image-section h3::before {
+        content: "📷";
+        font-size: 1rem;
+    }
+
+    .image-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .image-wrapper {
+        position: relative;
+        aspect-ratio: 16/9;
+        background: #f1f5f9;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        border: 2px solid #e2e8f0;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .image-wrapper:hover {
+        border-color: #3b82f6;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
     }
 
     .todo-image {
         width: 100%;
-        max-width: 300px;
-        height: auto;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
         transition: transform 0.2s ease;
     }
 
-    .todo-image:hover {
-        transform: scale(1.02);
+    .image-wrapper:hover .todo-image {
+        transform: scale(1.05);
+    }
+
+    .image-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .image-wrapper:hover .image-overlay {
+        opacity: 1;
+    }
+
+    .view-full {
+        background: rgba(255, 255, 255, 0.95);
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #374151;
+        transition: all 0.2s ease;
+    }
+
+    .view-full:hover {
+        background: white;
+        transform: scale(1.1);
+    }
+
+    .image-count {
+        font-size: 0.875rem;
+        color: #64748b;
+        margin: 0;
+        text-align: center;
+        font-style: italic;
     }
 
     .empty-state {
@@ -349,52 +539,52 @@
 
     /* Comments Section Styles */
     .comments-section {
-        margin-top: 2rem;
-        padding: 1rem;
-        background: white;
-        border-radius: 8px;
-        border: 1px solid #e5e7eb;
+    display: flex;
+    flex-direction: column;
+    height: 400px; /* set height for scroll area */
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fafc;
     }
 
-    .comments-list {
-        list-style: none;
-        padding: 0;
-        margin: 0 0 1rem 0;
-    }
-
-    .comment-item {
+    .comments-header {
+        flex-shrink: 0;
         padding: 0.75rem;
-        border-bottom: 1px solid #e5e7eb;
+        border-bottom: 1px solid #e2e8f0;
+        background: #f1f5f9;
+        font-size: 1.1rem;
+        font-weight: bold;
     }
 
-    .comment-text {
-        margin: 0 0 0.5rem 0;
-        color: #374151;
+    .comments-list-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0.75rem;
     }
 
-    .comment-date {
-        font-size: 0.75rem;
-        color: #6b7280;
+    /* Optional custom scrollbar */
+    .comments-list-container::-webkit-scrollbar {
+        width: 6px;
     }
-
-    .no-comments {
-        text-align: center;
-        color: #6b7280;
-        padding: 1rem;
+    .comments-list-container::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
     }
 
     .comment-form {
+        flex-shrink: 0;
         display: flex;
         gap: 0.5rem;
-        margin-top: 1rem;
+        padding: 0.75rem;
+        border-top: 1px solid #e2e8f0;
+        background: #f1f5f9;
     }
 
     .comment-input {
         flex: 1;
         padding: 0.5rem;
-        border: 1px solid #e5e7eb;
+        border: 1px solid #cbd5e1;
         border-radius: 4px;
-        font-size: 0.875rem;
     }
 
     .comment-submit {
@@ -403,21 +593,77 @@
         color: white;
         border: none;
         border-radius: 4px;
-        font-weight: 500;
         cursor: pointer;
     }
 
-    .comment-submit:hover {
-        background: #2563eb;
+    .lightbox-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        backdrop-filter: blur(4px);
     }
 
-    .status-toggle {
-        margin: 0;
+    .lightbox-container {
+        overflow: auto;
+        position: relative;
+        max-width: 90vw;
+        max-height: 90vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
-    .status-badge {
-        cursor: pointer;
+    .lightbox-image {
+        max-width: 100%;
+        max-height: 90vh;
+        object-fit: contain;
+        border-radius: 8px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .lightbox-close {
+        position: absolute;
+        top: -50px;
+        right: 0;
+        background: rgba(255, 255, 255, 0.9);
         border: none;
-        width: 100%;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #374151;
+        font-size: 18px;
+        font-weight: bold;
+        transition: all 0.2s ease;
     }
+
+    .lightbox-close:hover {
+        background: white;
+        transform: scale(1.1);
+    }
+
+    .lightbox-counter {
+        position: absolute;
+        bottom: -40px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 255, 255, 0.9);
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        color: #374151;
+        font-weight: 500;
+    }
+
+
 </style>
