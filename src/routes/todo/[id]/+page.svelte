@@ -2,17 +2,18 @@
   import TodoDetails from '$lib/components/TodoDetails.svelte';
   import { invalidate } from '$app/navigation';
   import type { PageData } from './$types';
-  import type { Todo, Comment } from '$lib/types';
+  import type { Todo, TodoComment } from '$lib/types';
 
   export let data: PageData;
-  $: ({ todo, comments: todoComments } = data as { 
-    todo: Todo;
-    comments: Comment[];
-  });
 
-  // Invalidate data when form actions complete
+  // Proper type handling without double casting
+  $: ({ todo, comments } = data);
+  $: todoComments = (comments || []) as TodoComment[];
+
+  // Enhanced invalidation
   async function handleSuccess() {
-    await invalidate('todos');
+    await invalidate(`/todo/${todo.id}`);
+    await invalidate('todos'); // If you have a list view to refresh
   }
 </script>
 

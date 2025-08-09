@@ -11,11 +11,9 @@ export type Todo = {
     updatedAt?: Date;
 };
 
-export type Comment = {
+export type TodoComment = {
     id: string;
     text: string;
     todoId: string;
     createdAt: Date;
-    updatedAt?: Date;
-
 };

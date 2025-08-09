@@ -1,15 +1,34 @@
-<!-- Detailed view of selected todo (right side) -->
 <script lang="ts">
-  import type { Todo, Comment } from '../types';
-  import { enhance} from '$app/forms';
+  import type { Todo, TodoComment } from '../types';
+  import { enhance } from '$app/forms';
   import { createEventDispatcher } from 'svelte';
-  import type { ActionResult } from '@sveltejs/kit';
+  
   export let todo: Todo;
-  export let comments: Comment[] = [];
+  export let comments: TodoComment[] = [];
   let newComment = '';
 
   const dispatch = createEventDispatcher();
 
+  // Enhanced form success handler
+  async function handleFormSuccess({ result }: { result: any }) {
+    if (result.type === 'success') {
+      // Update local state with server response if available
+      if (result.data?.updatedTodo) {
+        todo = result.data.updatedTodo;
+      }
+      if (result.data?.comments) {
+        comments = result.data.comments;
+      }
+      if (result.data?.newComment) {
+        comments = [...comments, result.data.newComment];
+      }
+      
+      newComment = '';
+      dispatch('success');
+    }
+  }
+
+  // Date formatting utilities (unchanged)
   function formatDate(date: Date | string | undefined): string {
     if (!date) return 'Not set';
     const d = new Date(date);
@@ -27,11 +46,6 @@
     today.setHours(0, 0, 0, 0);
     return due < today;
   }
-
-  function handleFormSuccess() {
-    newComment = '';
-    dispatch('success');
-  }
 </script>
 
 <div class="todo-details">
@@ -46,7 +60,7 @@
                 use:enhance={(form) => {
                     return async ({ result }) => {
                         if (result.type === 'success') {
-                            handleFormSuccess();
+                            handleFormSuccess({ result });
                         }
                     };
                 }}
@@ -122,7 +136,7 @@
                 use:enhance={(form) => {
                     return async ({ result }) => {
                         if (result.type === 'success') {
-                            handleFormSuccess();
+                            handleFormSuccess({ result });
                         }
                     };
                 }}

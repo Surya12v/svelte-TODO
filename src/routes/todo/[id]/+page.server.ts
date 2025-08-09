@@ -79,26 +79,38 @@ export const actions: Actions = {
       createdAt: new Date(data.get('createdAt') as string),
       updatedAt: new Date()
     };
-    await updateTodo(todo);    return { success: true };
+    await updateTodo(todo);    
+      return {
+    success: true,
+    updatedTodo: await getTodoById(params.id)
+  };
   },
 
   updateStatus: async ({ request, params }) => {
-    const data = await request.formData();
-    const completed = data.get('completed') === 'true';
-    await updateStatus(params.id, completed);
-    return { success: true };
-  },
+  const data = await request.formData();
+  const completed = data.get('completed') === 'true';
+  await updateStatus(params.id, completed);
+  // Return the updated todo and comments
+  return {
+    success: true,
+    updatedTodo: await getTodoById(params.id),
+    comments: await getCommentsByTodoId(params.id)
+  };
+},
 
   addComment: async ({ request, params }) => {
-    const data = await request.formData();
-    const comment = {
-      id: uuidv4(),
-      todoId: params.id,
-      text: data.get('comment') as string,
-      createdAt: new Date()
-    };
-    await addComment(comment);
-
-    return { success: true };
-  }
+  const data = await request.formData();
+  const comment = {
+    id: uuidv4(),
+    todoId: params.id,
+    text: data.get('comment') as string,
+    createdAt: new Date()
+  };
+  await addComment(comment);
+  // Return the updated comment list
+  return {
+    success: true,
+    comments: await getCommentsByTodoId(params.id)
+  };
+}
 };
