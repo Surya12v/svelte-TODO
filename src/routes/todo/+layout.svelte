@@ -2,20 +2,21 @@
   import TodoModal from '$lib/components/TodoModal.svelte';
   import { page } from '$app/stores';
   import type { LayoutData } from './$types';
+  import { todos, setTodos } from '$lib/stores/todoStore';
+  import { onMount } from 'svelte';
 
   export let data: LayoutData;
   let showModal = false;
 
   $: selectedId = $page.params.id;
-  $: todos = data.todos;
 
-  function openModal() {
-    showModal = true;
-  }
+  // ✅ Only initialize once on mount, so store isn't overwritten later
+  onMount(() => {
+    setTodos(data.todos);
+  });
 
-  function closeModal() {
-    showModal = false;
-  }
+  function openModal() { showModal = true; }
+  function closeModal() { showModal = false; }
 </script>
 
 <div class="main-layout">
@@ -23,10 +24,11 @@
     <div class="sidebar-header">
       <button class="create-btn" on:click={openModal}>+ Create Todo</button>
     </div>
+
     <ul class="todo-list">
-      {#each todos as todo (todo.id)}
-        <li class="todo-item {selectedId === todo.id ? 'selected' : ''}">
-          <a 
+      {#each $todos as todo (todo.id)}
+        <li class="todo-item {selectedId === todo.id ? 'selected' : ''} {todo.completed ? 'completed' : ''}">
+          <a
             href="/todo/{todo.id}"
             class="todo-link"
             data-sveltekit-preload-data="hover"
@@ -47,6 +49,7 @@
     <TodoModal on:close={closeModal} />
   {/if}
 </div>
+
 
 <style>
 * {
@@ -133,6 +136,11 @@ ul {
     flex: 1;
     font-size: 0.9rem;
   }
+  .todo-item.completed .todo-title {
+  text-decoration: line-through;
+  color: #9ca3af; /* optional: makes it look more faded */
+}
+
 
   .content-area {
     width: 70%; /* Fixed 70% width */

@@ -1,4 +1,5 @@
 import { getTodoById, getCommentsByTodoId, updateStatus, addComment, updateTodo, createTodo } from '$lib/db/queries';
+import { updateTodoStatus } from '$lib/stores/todoStore';
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { v4 as uuidv4 } from 'uuid';
@@ -90,6 +91,10 @@ export const actions: Actions = {
   const data = await request.formData();
   const completed = data.get('completed') === 'true';
   await updateStatus(params.id, completed);
+
+  // Update the store
+  updateTodoStatus(params.id, completed);
+
   // Return the updated todo and comments
   return {
     success: true,

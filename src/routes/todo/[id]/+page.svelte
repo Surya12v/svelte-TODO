@@ -2,20 +2,25 @@
   import TodoDetails from '$lib/components/TodoDetails.svelte';
   import { invalidate } from '$app/navigation';
   import type { PageData } from './$types';
-  import type { Todo, TodoComment } from '$lib/types';
+  import type { TodoComment } from '$lib/types';
+  import { updateTodoStatus } from '$lib/stores/todoStore'; // ⬅️ import store updater
 
   export let data: PageData;
 
-  // Proper type handling without double casting
   $: ({ todo, comments } = data);
   $: todoComments = (comments || []) as TodoComment[];
 
-  // Enhanced invalidation
-  async function handleSuccess() {
+  async function handleSuccess(event: CustomEvent) {
+    const updatedTodo = event.detail?.updatedTodo; // your child component should dispatch this
+    if (updatedTodo) {
+      updateTodoStatus(updatedTodo.id, updatedTodo.completed); // ⬅️ updates store
+    }
+
+    // Optional: still re-fetch if you want the latest comments/details
     await invalidate(`/todo/${todo.id}`);
-    await invalidate('todos'); // If you have a list view to refresh
   }
 </script>
+
 
 <div class="todo-view">
   {#if todo}
